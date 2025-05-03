@@ -1,24 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
+import { NextRequest, NextResponse } from "next/server"
+import nodemailer from "nodemailer"
 
-export async function POST(req: NextRequest) {
+export const POST = async (req: NextRequest) => {
+  const origin = req.headers.get("origin")
+
+  if (origin !== "https://emranffl.github.io") {
+    return new NextResponse("Forbidden", { status: 403 })
+  }
+
   const { name, email, subject, message } = await req.json()
 
   if (!name || !email || !subject || !message) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    return NextResponse.json({ error: "Missing fields" }, { status: 400 })
   }
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    service: "gmail",
     auth: {
-      user: process.env.GMAIL_USER,      
-      pass: process.env.GMAIL_PASS,     
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_PASS,
     },
   })
 
   const mailOptions = {
     from: email,
-    to: process.env.GMAIL_USER, 
+    to: process.env.GMAIL_USER,
     subject: `${subject} from ${name}`,
     text: message,
     html: `
@@ -31,9 +37,29 @@ export async function POST(req: NextRequest) {
 
   try {
     await transporter.sendMail(mailOptions)
-    return NextResponse.json({ message: 'Email sent successfully' }, { status: 200 })
+
+    return new NextResponse(JSON.stringify({ message: "Email sent successfully" }), {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "https://emranffl.github.io",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Content-Type": "application/json",
+      },
+    })
   } catch (error) {
     console.error(error)
-    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+    return NextResponse.json({ error: "Failed to send email" }, { status: 500 })
   }
 }
+
+// CORS preflight handler
+export const OPTIONS = () =>
+  new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "https://emranffl.github.io",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  })
