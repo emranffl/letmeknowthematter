@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
+import allowedDomains from "./allowed-domains.json"
 
 export const POST = async (req: NextRequest) => {
-  const origin = req.headers.get("origin")
+  const origin = req.headers.get("origin") || req.headers.get("referer")
+  if (!origin) return new NextResponse("Origin not found", { status: 400 })
+  if (!allowedDomains.includes(origin)) return new NextResponse("Forbidden", { status: 403 })
 
-  if (origin !== "https://emranffl.github.io") {
-    return new NextResponse("Forbidden", { status: 403 })
-  }
-
-  const { name, email, subject, message } = await req.json()
-
-  if (!name || !email || !subject || !message) {
+  const { name, email, subject, message, toEmail } = await req.json()
+  if (!name || !email || !subject || !message || !toEmail) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 })
   }
 
@@ -24,7 +22,7 @@ export const POST = async (req: NextRequest) => {
 
   const mailOptions = {
     from: email,
-    to: process.env.GMAIL_USER,
+    to: toEmail || process.env.GMAIL_USER,
     subject: `${subject} from ${name}`,
     text: message,
     html: `
@@ -58,8 +56,10 @@ export const OPTIONS = () =>
   new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "https://emranffl.github.io",
+      "Access-Control-Allow-Origin": `${allowedDomains.join(",")}`,
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Credentials": "true",
+      "Content-Type": "application/json",
     },
   })
