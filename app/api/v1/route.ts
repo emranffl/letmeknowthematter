@@ -7,8 +7,8 @@ export const POST = async (req: NextRequest) => {
   if (!origin) return new NextResponse("Origin not found", { status: 400 })
   if (!allowedDomains.includes(origin)) return new NextResponse("Forbidden", { status: 403 })
 
-  const { name, email, subject, message, toEmail } = await req.json()
-  if (!name || !email || !subject || !message || !toEmail) {
+  const { email, html, message, name, subject, toEmail } = await req.json()
+  if (!email || (!html && !message) || !name || !subject || !toEmail) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 })
   }
 
@@ -24,8 +24,10 @@ export const POST = async (req: NextRequest) => {
     from: email,
     to: toEmail || process.env.GMAIL_USER,
     subject: `${subject} from ${name}`,
-    text: message,
-    html: `
+    text: html ? undefined : message,
+    html:
+      html ||
+      `
       <p><strong>Name:</strong> ${name}</p>
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Subject:</strong> ${subject}</p>
