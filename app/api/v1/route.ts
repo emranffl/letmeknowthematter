@@ -41,7 +41,11 @@ export const POST = async (req: NextRequest) => {
     return new NextResponse(JSON.stringify({ message: "Email sent successfully" }), {
       status: 200,
       headers: {
-        "Access-Control-Allow-Origin": "https://emranffl.github.io",
+        // Echo the caller's own origin, which has already been checked against
+        // allowedDomains above. Hardcoding one origin here meant every other
+        // entry in that list passed preflight and then failed on the POST.
+        // A list is also not valid in this header — it takes exactly one origin.
+        "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
         "Content-Type": "application/json",
@@ -54,14 +58,25 @@ export const POST = async (req: NextRequest) => {
 }
 
 // CORS preflight handler
-export const OPTIONS = () =>
-  new NextResponse(null, {
+export const OPTIONS = (req: NextRequest) => {
+  const origin = req.headers.get("origin") ?? ""
+
+  // `Access-Control-Allow-Origin` accepts one origin or `*`, never a list.
+  // Joining the array with commas produced a value no browser accepts, so
+  // preflight silently failed for every caller including the allowed one.
+  if (!allowedDomains.includes(origin)) {
+    return new NextResponse(null, { status: 403 })
+  }
+
+  return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": `${allowedDomains.join(",")}`,
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
       "Content-Type": "application/json",
     },
   })
+}
