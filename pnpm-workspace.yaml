@@ -1,3 +1,10 @@
+# Build scripts are opt-in under pnpm. unrs-resolver fetches a
+# platform-specific native binary in postinstall and eslint's import resolution
+# does not work without it.
 onlyBuiltDependencies:
   - sharp
   - unrs-resolver
+
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
